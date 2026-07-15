@@ -35,7 +35,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/sync.mjs" --status
 }
 ```
 
-（開発時のみ: `url` フィールドで接続先を上書きできる。既定は `https://mcp.benten.io/mcp`）
+（開発時のみ: `url` フィールドで接続先を上書きできる。既定は `https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp`）
 
 ### 3. 同期するプロジェクトの選択（選択制）
 

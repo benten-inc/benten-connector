@@ -68,7 +68,7 @@ function loadConfig() {
  */
 function loadState(config) {
   const state = readJson(STATE_PATH, { sessions: {}, files: {} });
-  const url = config?.url ?? "https://mcp.benten.io/mcp";
+  const url = config?.url ?? "https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp";
   if (state.url !== url) {
     return { url, sessions: {}, files: {} };
   }
@@ -138,7 +138,7 @@ function turnsHash(turns) {
 
 /** benten-mcp へ JSON-RPC 1発（stateless streamable HTTP）。 */
 async function mcpCall(config, method, params) {
-  const url = config.url ?? "https://mcp.benten.io/mcp";
+  const url = config.url ?? "https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60_000);
   try {
@@ -291,7 +291,7 @@ async function runVerify() {
     const result = await mcpCall(config, "tools/list", {});
     const hasIngest = (result?.tools ?? []).some((t) => t.name === "ingest_transcript");
     console.log(
-      JSON.stringify({ ok: true, url: config.url ?? "https://mcp.benten.io/mcp", ingest_tool_available: hasIngest, projects: config.projects ?? [] }),
+      JSON.stringify({ ok: true, url: config.url ?? "https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp", ingest_tool_available: hasIngest, projects: config.projects ?? [] }),
     );
   } catch (e) {
     console.log(JSON.stringify({ ok: false, error: String(e).slice(0, 300) }));
@@ -306,7 +306,7 @@ function runStatus() {
       {
         config_path: CONFIG_PATH,
         token_set: Boolean(config?.token),
-        url: config?.url ?? "https://mcp.benten.io/mcp",
+        url: config?.url ?? "https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp",
         projects: config?.projects ?? [],
         synced_sessions: Object.keys(state.sessions).length,
         log_path: LOG_PATH,

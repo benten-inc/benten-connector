@@ -36,7 +36,7 @@ setup が対話で以下を行います:
 
 設定は `~/.benten/config.json`、送信済み状態は `~/.benten/sync-state.json`、ログは `~/.benten/sync.log`。
 
-送信先は Benten の MCP サーバ（`mcp.benten.io`）の `ingest_transcript` ツールで、認証は Benten のアクセストークン（PAT）です。
+送信先は Benten の MCP サーバの `ingest_transcript` ツールで、認証は Benten のアクセストークン（PAT）です。
 
 ## アンインストール
 
