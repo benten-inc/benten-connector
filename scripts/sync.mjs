@@ -19,7 +19,7 @@
  *     サブエージェント会話は送らない。
  *   - 選択制: config.projects（絶対パスの allowlist）配下の cwd のセッションだけ送る。
  */
-import { readFileSync, writeFileSync, mkdirSync, appendFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync, readdirSync, statSync, existsSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename } from "node:path";
 import { createHash } from "node:crypto";
@@ -31,11 +31,17 @@ const STATE_PATH = join(BENTEN_DIR, "sync-state.json");
 const LOG_PATH = join(BENTEN_DIR, "sync.log");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 
+const LOCK_DIR = join(BENTEN_DIR, "sync.lock");
+
 const MAX_TURNS = 2000;
 const MAX_TURN_CHARS = 50_000;
 const MAX_PAYLOAD_BYTES = 3_800_000; // サーバ(express)の 4mb 制限の手前
 const ACTIVE_GRACE_MS = 5 * 60 * 1000; // 直近5分に書かれたファイルは「進行中」とみなし送らない
-const VERSION = "0.1.0";
+// サーバ側でチャンク化・埋め込みが同期で走るため、大きいセッションは分単位かかる。
+// 60s だと途中で abort し、サーバだけ処理が完走する片肺になる（実測）。
+const FETCH_TIMEOUT_MS = 300_000;
+const LOCK_STALE_MS = 30 * 60 * 1000;
+const VERSION = "0.1.1";
 
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
@@ -140,7 +146,7 @@ function turnsHash(turns) {
 async function mcpCall(config, method, params) {
   const url = config.url ?? "https://benten-mcp-ud7nswm4wq-an.a.run.app/mcp";
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -163,6 +169,7 @@ async function mcpCall(config, method, params) {
         .map((l) => l.slice(5).trim());
       payload = datas[datas.length - 1] ?? "";
     }
+    if (!payload.trim()) throw new Error("empty response body");
     const rpc = JSON.parse(payload);
     if (rpc.error) throw new Error(`RPC ${rpc.error.code}: ${rpc.error.message}`);
     return rpc.result;
@@ -236,9 +243,53 @@ async function runHook() {
   }
 }
 
+/**
+ * catch-up の多重起動ロック（mkdir の原子性を利用）。SessionStart フックと
+ * 手動実行が並走すると同じファイルを二重送信する（サーバ dedup で実害は
+ * ないが帯域と時間の無駄）。取れなければ黙って譲る。stale は奪う。
+ */
+function acquireLock() {
+  try {
+    mkdirSync(LOCK_DIR);
+    return true;
+  } catch {
+    try {
+      const st = statSync(LOCK_DIR);
+      if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
+        rmSync(LOCK_DIR, { recursive: true, force: true });
+        mkdirSync(LOCK_DIR);
+        return true;
+      }
+    } catch {
+      /* 競合で消えた等 → 譲る */
+    }
+    return false;
+  }
+}
+
+function releaseLock() {
+  try {
+    rmSync(LOCK_DIR, { recursive: true, force: true });
+  } catch {
+    /* best-effort */
+  }
+}
+
 async function runCatchUp(limit) {
   const config = loadConfig();
   if (!config?.token) return;
+  if (!acquireLock()) {
+    log("catch-up skipped: another sync is running");
+    return;
+  }
+  try {
+    await runCatchUpLocked(config, limit);
+  } finally {
+    releaseLock();
+  }
+}
+
+async function runCatchUpLocked(config, limit) {
   const state = loadState(config);
   let sent = 0;
   let dirs = [];
