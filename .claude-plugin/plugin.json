@@ -1,0 +1,10 @@
+{
+  "name": "benten-connector",
+  "displayName": "Benten Connector",
+  "version": "0.1.0",
+  "description": "Sync your Claude Code sessions to Benten (shelf.benten.io) — your AI work-log, searchable alongside your meetings, Slack, and calendar.",
+  "author": { "name": "Benten Inc.", "url": "https://benten.io" },
+  "repository": "https://github.com/benten-inc/benten-connector",
+  "license": "MIT",
+  "keywords": ["benten", "worklog", "sync", "sessions"]
+}

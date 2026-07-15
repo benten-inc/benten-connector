@@ -1,0 +1,12 @@
+{
+  "name": "benten",
+  "owner": { "name": "Benten Inc.", "email": "aono@benten.io" },
+  "description": "Benten official plugins",
+  "plugins": [
+    {
+      "name": "benten-connector",
+      "source": "./",
+      "description": "Sync your Claude Code sessions to Benten (shelf.benten.io)."
+    }
+  ]
+}
